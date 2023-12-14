@@ -110,7 +110,7 @@ def salvar():
         # Sanitizar a entrada
         id_evento_ent = int(request.form.get('id_evento'))
         nome_pessoa = escape(request.form.get('nome'))
-        se_tem_acesso = bool(request.form.get('tem_acesso'))
+        se_tem_acesso = (request.form.get('tem_acesso') == "True" or request.form.get('tem_acesso') == "true")
 
         # Chegou aqui tem o nome e o evento mas verificar se existem
         o_evento = db.get_or_404(Evento, id_evento_ent)
@@ -118,19 +118,22 @@ def salvar():
         # Entao o evento de fato existe e podemos associa-lo a pessoa
         # Mas e se a Pessoa ja existir?
         # O fetchone retorna exatamente UMA linha OU None
-        ja_existe = db.session.execute(db.select(Pessoa).where(Pessoa.nome == nome_pessoa)).fetchone()
+        stmt = db.select(Pessoa).where(Pessoa.nome == nome_pessoa)
+        ja_existe = db.session.execute(stmt).fetchone()
+
         if ja_existe is not None:
             return jsonify({'status':'400','msg': 'A pessoa informada ja existe!'}), 400
         
-        # Cria e INSERT Pessoa
+        
+        # Cria e INSERT Pessoa se ela nao existir ainda
         a_pessoa = Pessoa(nome=nome_pessoa, tem_acesso=se_tem_acesso)
         db.session.add(a_pessoa)
         db.session.commit()
-
+        
         # UPDATE Evento e flush no BD
         o_evento.pessoa_id = a_pessoa.id
         db.session.commit()
-
+        
         # UPDATE Imagem e flush no BD
         imagem_evento = db.get_or_404(Imagem, o_evento.imagem_id)
         imagem_evento.pessoa_id = a_pessoa.id
@@ -152,6 +155,26 @@ def pessoas_deletar(id):
     except Exception as e:
         return jsonify({'status': '500', 'msg': str(e)}), 500
 
+@app.route('/pessoas/up/<id>', methods=['PUT'])
+def pessoas_up(id):
+    try:
+        a_pessoa = db.get_or_404(Pessoa, id)
+
+        # Algumas validacoes (request.form ou request.args)
+        if 'nome' not in request.form or 'tem_acesso' not in request.form:
+            return jsonify({'status':'400','msg':'A pessoa esta faltando no request!'}), 400
+        
+        nome_pessoa = escape(request.form.get('nome'))
+        se_tem_acesso = (request.form.get('tem_acesso') == 'True' or request.form.get('tem_acesso') == 'true')
+        
+        a_pessoa.nome = nome_pessoa
+        a_pessoa.tem_acesso = se_tem_acesso
+
+
+        db.session.commit()
+        return jsonify({'status':'200','msg':'Ok'}), 200
+    except Exception as e:
+        return jsonify({'status': '500', 'msg': str(e)}), 500
 
 # Esse endpoint retorna uma lista de pessoas
 @app.route('/pessoas', methods=['GET'])
@@ -168,12 +191,13 @@ def pessoas_index():
 def evento_index():
     try:
         # Traz os eventos do BD
-        #events = db.session.execute(db.select(Evento).order_by(Evento.data)).scalars()
-        stmt = db.select(Evento, Imagem.photo_path).join(Evento.imagem).order_by(Evento.data)
+        #stmt = db.select(Evento, Imagem.photo_path).join(Evento.imagem).order_by(Evento.data)
+        stmt = db.select(Evento, Imagem.photo_path, Pessoa.nome, Pessoa.tem_acesso).join(Evento.imagem).join(Evento.pessoa).order_by(Evento.data)
+        # OBS ISSO PODE CAUSAR N+1 QUERIES
         events = db.session.execute(stmt).scalars()
 
         # Queremos entregar o Evento junto com sua Imagem correspondente
-        result = [{"id_evento": event.id_evento,"data": event.data, "pessoa_id": event.pessoa_id, "imagem_id": event.imagem_id, "photo_path": normalizar_path(event.imagem.photo_path)} for event in events]
+        result = [{"id_evento": event.id_evento,"data": event.data, "descricao": event.descricao, "pessoa_id": event.pessoa_id, "imagem_id": event.imagem_id, "nome": event.pessoa.nome, "tem_acesso": event.pessoa.tem_acesso, "photo_path": normalizar_path(event.imagem.photo_path)} for event in events]
         
         return jsonify({'status': '200', 'data': result}), 200
     except Exception as e:

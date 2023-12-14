@@ -57,6 +57,11 @@ const router = createRouter({
       name: 'about',
       component: () => import('./Pages/AboutView.vue')
     },
+    {
+      path: base_path + 'pessoas/update/:id',
+      name: 'pessoas_update',
+      component: () => import('./Pages/PessoaUpdateView.vue')
+    }
 ]
 });
 
