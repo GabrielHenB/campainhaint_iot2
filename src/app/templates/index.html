@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampaInt: Campainha Inteligente</title>
+</head>
+<script>
+    const baseURL = "http://127.0.0.1:5000";
+    
+
+    function handleSubmit(){
+        document.querySelector('#inputMain').addEventListener("submit", (ev) => {
+            ev.preventDefault();
+            const impute = ev.target.querySelector('input[type="file"]').files[0];
+            
+            if(impute){
+                const dados = new FormData(ev.target); //Consiste nos dados do form
+                const url = baseURL + '/upload';
+                fetch(url, {
+                    method: 'POST',
+                    body: dados
+                }).then(resposta => {
+                    if(resposta.ok) console.log("Sucesso");
+                    else{
+                        console.log("Ocorreu um erro durante o envio");
+                        return resposta.json();
+                    }
+                }).then(dados => {
+                    if(dados) throw new Error("| " + dados.status + " de mensagem: " + dados.msg)
+                }).catch(err =>  {
+                    console.log("Erro Fetcher: " + err);
+                    renderError(err);
+                });
+                //ev.target.submit();
+            }
+            else
+                console.log("Formulario vazio");
+        })
+    }
+
+    function handleUpdate(){
+        document.querySelector('#inputSalvar').addEventListener("submit", (ev) => {
+            ev.preventDefault();
+            const impute = ev.target;
+            
+            if(impute){
+                const dados = new FormData(ev.target); //Consiste nos dados do form
+                if(!ev.target.querySelector('#inputTemAcesso').checked) dados.append('tem_acesso','False')
+                console.log(dados);
+                const url = baseURL + '/salvar';
+                fetch(url, {
+                    method: 'POST',
+                    body: dados
+                }).then(resposta => {
+                    if(resposta.ok) console.log("Sucesso");
+                    else{
+                        console.log("Ocorreu um erro durante o envio");
+                        return resposta.json();
+                    }
+                }).then(dados => {
+                    if(dados) throw new Error(dados.status + " de mensagem: " + dados.msg)
+                }).catch(err =>  {
+                    console.log("Erro Fetcher: " + err);
+                    renderError(err);
+                });
+                //ev.target.submit();
+            }
+            else{
+                //console.log("Formulario vazio");
+                renderError("Formulario Vazio! Preencha o formulario!")
+            }
+                
+        })
+    }
+    
+
+    function render(content){
+        for(let obj of content){
+            document.querySelector('#receba').innerHTML += `
+                <img src=${obj.imagem} alt="thumb" />
+                <p>ID: ${obj.id} <br>
+                    Nome: ${obj.name} <br>
+                    Data: ${obj.data} <br></p>
+            `;
+        }
+    }
+
+    function renderError(content){
+        document.querySelector('#receba').innerHTML = `<h1 style='color: red;'>Erro:</h1>
+            <p> ${content} </p>
+        `;
+    }
+
+    function fetchJson(e){
+        const url = baseURL + '/pessoas'
+        console.log("Fetchin JSON...");
+        fetch(url).then(pac => {
+            if(pac.status < 200 || pac.status >= 300) throw new Error("JSON Fetch Error Code " + pac.status + " with message " + pac.msg);
+            return pac.json();
+        }).then(
+            content => render(content)
+        ).catch(err => {
+            console.log("Erro Fetcher: " + err);
+            renderError(err);
+            });
+    }
+
+    window.onload = () => {
+        //fetchJson();
+        console.log(document.querySelector('#inputMain'));
+        handleSubmit();
+        handleUpdate();
+    };
+</script>
+<style>
+    form{
+        font-family: Arial;
+        font-size: 16pt;
+    }
+    form label,input{
+        margin: 10px;
+    }
+</style>
+<body>
+    <form id="inputMain" action="/upload" method="POST">
+        <label for="inputImagem">Insira a imagem de teste: </label>
+        <input type="file" name="imagem" id="inputImagem" />
+        <input type="hidden" name="csrf" value="teste" />
+        <input type="submit" value="Enviar">
+    </form>
+
+    <form id="inputSalvar" action="/salvar" method="POST">
+        <label for="inputEvento">ID do Evento: </label>
+        <input type="number" name="id_evento" id="inputEvento">
+        <label for="inputNome">Nome da Pessoa: </label>
+        <input type="text" name="nome" id="inputNome">
+        <label for="inputTemAcesso">Tem Acesso ? </label>
+        <input type="checkbox" name="tem_acesso" id="inputTemAcesso" value="True">
+        <input type="hidden" name="csrf" value="teste" />
+        <input type="submit" value="Atualizar">
+    </form>
+
+    <main id="oMain">
+        <section id="receba">
+
+        </section>
+    </main>
+
+    <section class="teste">
+        <!--<img src="http://127.0.0.1:5000/downloads/2.jpg" alt="teste"/>-->
+    </section>
+</body>
+</html>
