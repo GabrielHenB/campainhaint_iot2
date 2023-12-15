@@ -5,6 +5,7 @@ from flask_cors import CORS
 import os
 import datetime
 import pytz
+import random
 
 from app import app, db
 from app.models import Imagem, Pessoa, Evento
@@ -38,6 +39,52 @@ def debugdb():
         db.session.commit()
     return redirect(url_for('index'))
 
+@app.route('/uploadesp', methods=['POST'])
+def special_store():
+    try:
+        image_raw_bytes = request.get_data()  #get the whole body
+
+        if image_raw_bytes is None:
+            return jsonify({'status': '400','msg': 'Request vazio!'}), 400
+
+        # renomeia
+        resposta = image_raw_bytes
+
+        # Salva a imagem usando o caminho atual (src) e o configurado para a pasta das imagens com o nome
+        criar_diretorio()
+        random_filename = ''.join(random.choice('0123456789') for _ in range(6))+'.jpg'
+        caminho_salvar = os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER'], random_filename)
+        #resposta.save(caminho_salvar)
+        f = open(caminho_salvar, 'wb') # wb for write byte data in the file instead of string
+        f.write(image_raw_bytes) #write the bytes from the request body to the file
+        f.close()
+
+        # Realizar reconhecimento facial e obter resposta ID da Pessoa ou None
+        id_reconhecido = usar_facerec(caminho_salvar)
+        
+        # Bom se for None ele avisa mas internamente toda Imagem com pessoa_id None eh considerada Desconhecido
+        if id_reconhecido is None:
+            id_reconhecido = 0
+            print("Nao reconhecido")
+
+        # Isso aqui cria uma nova Row no banco de dados com a nova Imagem
+        if resposta:
+            new_photo = Imagem(photo_path=caminho_salvar,pessoa_id=id_reconhecido)
+            db.session.add(new_photo)
+            db.session.commit()
+        
+        # Um Evento deve ser registrado
+        if resposta:
+            new_evento = Evento(pessoa_id=id_reconhecido,imagem_id=new_photo.id_img)
+            db.session.add(new_evento)
+            db.session.commit()
+        
+
+        return jsonify({"status":"200","msg": "A imagem foi salva com sucesso!"}), 200
+    
+    except Exception as e:
+        return jsonify({'status': '500','msg': str(e)}), 500
+
 # Esse endpoint espera receber um request com arquivo de nome "imagem" que sera salva
 # associada a uma pessoa apos o reconhecimento obter dados disso ou nao
 @app.route('/upload', methods=['POST'])
@@ -54,17 +101,17 @@ def store():
         
         # Aqui ele verifica se existe o campo no request object se nao BAD REQUEST
         if 'imagem' not in request.files:
-            return jsonify({'erro': 'Request vazio!'}), 400
+            return jsonify({'status': '400','msg': 'Request vazio!'}), 400
         
         # Assuming the photo is sent in the request body
         resposta = request.files['imagem']
         
         # Valida se tem arquivo e se a extensao eh permitida. O backend nao aceita outras extensoes. Poderia validar tamanho tambem.
         if resposta.filename == '':
-            return jsonify({'erro': 'Request sem imagem!'}), 400
+            return jsonify({'status':'400','msg': 'Request sem imagem!'}), 400
 
         if not (allowed_file(resposta.filename)):
-            return jsonify({'erro': 'Tipo invalido de arquivo. Deve ser png, jpg, jpeg'}), 400
+            return jsonify({'status':'400','msg': 'Tipo invalido de arquivo. Deve ser png, jpg, jpeg'}), 400
         
         # Usa o helper de sanitizar nomes de arquivos do werkzeug. Talvez depois mudar para outro esquema.
         nome_seguro = secure_filename(resposta.filename)
