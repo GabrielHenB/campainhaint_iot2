@@ -5,7 +5,7 @@
 - pip install flask Flask-SQLAlchemy markupsafe flask-cors psycopg2-binary
 - pip install dotenv
 - pip install opencv-python numpy matplotlib
-- pip install cmake dlib face-recoginition
+- pip install cmake dlib face-recoginition pytz
 
 2) Renomear o .env.example para .env tendo as constantes para usar no codigo.
 

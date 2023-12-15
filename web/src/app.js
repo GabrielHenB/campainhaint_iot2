@@ -2,11 +2,11 @@ import './bootstrap'; //Ja carrega o Axios
 import { createApp } from 'vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
-// Import our custom CSS
+// ISSO IMPORTA O CSS
 import '../css/app.scss';
 
-// Import all of Bootstrap's JS
-import * as bootstrap from 'bootstrap';
+// IMPORTACOES DE JS DO BOOTSTRAP COLOCAR AQUI
+//import * as bootstrap from 'bootstrap';
 
 
 import App from './Pages/App.vue';
@@ -53,10 +53,10 @@ const router = createRouter({
       component: () => import('./Pages/ConfigView.vue')
     },
     {
-      path: base_path + "about",
-      name: 'about',
-      component: () => import('./Pages/AboutView.vue')
-    },
+      path: base_path + 'pessoas/update/:id',
+      name: 'pessoas_update',
+      component: () => import('./Pages/PessoaUpdateView.vue')
+    }
 ]
 });
 
