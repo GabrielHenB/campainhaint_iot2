@@ -28,7 +28,10 @@ function handleSubmit(ev){
                         return resposta.json();
                     }
                 }).then(dados => {
-                    if(dados) throw new Error("| " + dados.status + " de mensagem: " + dados.msg)
+                    if(dados){
+                      //console.log(dados);
+                      throw new Error("| " + dados.status + " de mensagem: " + dados.msg);
+                    } 
                 }).catch(err =>  {
                     console.log("Erro Fetcher: " + err);
                     renderError(err);

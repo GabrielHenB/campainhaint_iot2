@@ -5,6 +5,7 @@ from flask_cors import CORS
 import os
 import datetime
 import pytz
+import random
 
 from app import app, db
 from app.models import Imagem, Pessoa, Evento
@@ -38,6 +39,53 @@ def debugdb():
         db.session.commit()
     return redirect(url_for('index'))
 
+@app.route('/uploadesp', methods=['POST'])
+def special_store():
+    try:
+        image_raw_bytes = request.get_data()  #get the whole body
+
+        if image_raw_bytes is None:
+            return jsonify({'status': '400','msg': 'Request vazio!'}), 400
+
+        # renomeia
+        resposta = image_raw_bytes
+
+        # Salva a imagem usando o caminho atual (src) e o configurado para a pasta das imagens com o nome
+        criar_diretorio()
+        random_filename = ''.join(random.choice('0123456789') for _ in range(6))+'.jpg'
+        caminho_salvar = os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER'], random_filename)
+        print(f"debug: O nome do arquivo eh {random_filename} com o caminho {caminho_salvar}")
+        #resposta.save(caminho_salvar)
+        f = open(caminho_salvar, 'wb') # wb for write byte data in the file instead of string
+        f.write(image_raw_bytes) #write the bytes from the request body to the file
+        f.close()
+
+        # Realizar reconhecimento facial e obter resposta ID da Pessoa ou None
+        id_reconhecido = usar_facerec(caminho_salvar)
+        
+        # Bom se for None ele avisa mas internamente toda Imagem com pessoa_id None eh considerada Desconhecido
+        if id_reconhecido is None:
+            id_reconhecido = 0
+            print("Nao reconhecido")
+
+        # Isso aqui cria uma nova Row no banco de dados com a nova Imagem
+        if resposta:
+            new_photo = Imagem(photo_path=caminho_salvar,pessoa_id=id_reconhecido)
+            db.session.add(new_photo)
+            db.session.commit()
+        
+        # Um Evento deve ser registrado
+        if resposta:
+            new_evento = Evento(pessoa_id=id_reconhecido,imagem_id=new_photo.id_img)
+            db.session.add(new_evento)
+            db.session.commit()
+        
+
+        return jsonify({"status":"200","msg": "A imagem foi salva com sucesso!"}), 200
+    
+    except Exception as e:
+        return jsonify({'status': '500','msg': str(e)}), 500
+
 # Esse endpoint espera receber um request com arquivo de nome "imagem" que sera salva
 # associada a uma pessoa apos o reconhecimento obter dados disso ou nao
 @app.route('/upload', methods=['POST'])
@@ -54,17 +102,17 @@ def store():
         
         # Aqui ele verifica se existe o campo no request object se nao BAD REQUEST
         if 'imagem' not in request.files:
-            return jsonify({'erro': 'Request vazio!'}), 400
+            return jsonify({'status': '400','msg': 'Request vazio!'}), 400
         
         # Assuming the photo is sent in the request body
         resposta = request.files['imagem']
         
         # Valida se tem arquivo e se a extensao eh permitida. O backend nao aceita outras extensoes. Poderia validar tamanho tambem.
         if resposta.filename == '':
-            return jsonify({'erro': 'Request sem imagem!'}), 400
+            return jsonify({'status':'400','msg': 'Request sem imagem!'}), 400
 
         if not (allowed_file(resposta.filename)):
-            return jsonify({'erro': 'Tipo invalido de arquivo. Deve ser png, jpg, jpeg'}), 400
+            return jsonify({'status':'400','msg': 'Tipo invalido de arquivo. Deve ser png, jpg, jpeg'}), 400
         
         # Usa o helper de sanitizar nomes de arquivos do werkzeug. Talvez depois mudar para outro esquema.
         nome_seguro = secure_filename(resposta.filename)
@@ -116,7 +164,7 @@ def salvar():
         id_evento_ent = int(request.form.get('id_evento'))
         nome_pessoa = escape(request.form.get('nome'))
         se_tem_acesso = (request.form.get('tem_acesso') == "True" or request.form.get('tem_acesso') == "true")
-
+        
         # Chegou aqui tem o nome e o evento mas verificar se existem
         o_evento = db.get_or_404(Evento, id_evento_ent)
         
@@ -126,14 +174,23 @@ def salvar():
         stmt = db.select(Pessoa).where(Pessoa.nome == nome_pessoa)
         ja_existe = db.session.execute(stmt).fetchone()
 
-        if ja_existe is not None and nome != "desconhecido":
-            return jsonify({'status':'400','msg': 'A pessoa informada ja existe!'}), 400
-        
-        
-        # Cria e INSERT Pessoa se ela nao existir ainda
-        a_pessoa = Pessoa(nome=nome_pessoa, tem_acesso=se_tem_acesso)
-        db.session.add(a_pessoa)
-        db.session.commit()
+        if ja_existe is not None and nome_pessoa != "desconhecido":
+            # Portanto a pessoa ja esta no bd e estamos tentando identificar
+            # Devemos atribuir entao o novo nome e identificacao a pessoa!
+            a_pessoa = db.session.execute(stmt).scalar_one()
+            a_pessoa.tem_acesso = se_tem_acesso
+            print("A pessoa ja existia e vamos associar seu id ao evento apenas!")
+            #return jsonify({'status':'400','msg': 'A pessoa informada ja existe!'}), 400
+        elif ja_existe is None and nome_pessoa != "desconhecido":
+            # A pessoa nao existe e o nome nao eh desconhecido
+
+            # Cria e INSERT Pessoa se ela nao existir ainda
+            a_pessoa = Pessoa(nome=nome_pessoa, tem_acesso=se_tem_acesso)
+            db.session.add(a_pessoa)
+            db.session.commit()
+        else:
+            # A pessoa eh desconhecida
+            a_pessoa = db.session.execute(stmt).scalar_one()
         
         # UPDATE Evento e flush no BD
         o_evento.pessoa_id = a_pessoa.id
@@ -243,16 +300,24 @@ def download_file(name):
 # Retorna o id da Pessoa se encontrar correspondencia e se nao retorna None
 def usar_facerec(alvo):
     try:
+        print("Usando o seguinte caminho {}".format(alvo))
         # Queremos rodar por todas tuplas de Imagem ate encontrar um correspondente
         as_imagens = Imagem.query.all()
         
         for imagem in as_imagens:
             if imagem.pessoa_id is not None:
                 if reconhecimento(imagem.photo_path,alvo) == True:
+                    print("Tentando reconhecer")
                     # Se isso aconteceu ele esta no banco de dados
-                    resultado = db.get_or_404(Pessoa, imagem.pessoa_id)
+                    #stmt = db.select(Pessoa).where(id == imagem.pessoa_id)
+                    #resultado = db.session.execute(stmt).scalars()[0]
+                    #resultado = db.one_or_404(Pessoa, imagem.pessoa_id)
+                    teste = imagem.pessoa_id
+                    #resultado = db.first_or_404(Pessoa, teste)
+                    resultado = Pessoa.query.filter_by(id=teste).first_or_404()
                     print(f"Encontrado: {resultado.id}")
                     return resultado.id
+        print("Nao foi possivel reconhecer retornando None")
         return None
     except Exception as somee:
         print("Erro na funcao usar_facerec = ")

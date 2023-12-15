@@ -24,6 +24,9 @@ import {RouterLink } from 'vue-router';
 </footer>
 </template>
 <style scoped>
+i:hover{
+    color: #9ae2ff;
+}
 .footerbg{
     background-color: #040404;
     position: fixed;
