@@ -3,6 +3,8 @@ from werkzeug.utils import secure_filename
 from markupsafe import escape
 from flask_cors import CORS
 import os
+import datetime
+import pytz
 
 from app import app, db
 from app.models import Imagem, Pessoa, Evento
@@ -32,6 +34,8 @@ def debugdb():
     print("iniciando criacao de dados no bd")
     with app.app_context():
         db.create_all()
+        db.session.add(Pessoa(id=0,nome='desconhecido',tem_acesso=False))
+        db.session.commit()
     return redirect(url_for('index'))
 
 # Esse endpoint espera receber um request com arquivo de nome "imagem" que sera salva
@@ -66,7 +70,7 @@ def store():
         nome_seguro = secure_filename(resposta.filename)
 
         # Salva a imagem usando o caminho atual (src) e o configurado para a pasta das imagens com o nome
-        path_correction()
+        criar_diretorio()
         caminho_salvar = os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER'], nome_seguro)
         resposta.save(caminho_salvar)
 
@@ -75,6 +79,7 @@ def store():
         
         # Bom se for None ele avisa mas internamente toda Imagem com pessoa_id None eh considerada Desconhecido
         if id_reconhecido is None:
+            id_reconhecido = 0
             print("Nao reconhecido")
 
         # Isso aqui cria uma nova Row no banco de dados com a nova Imagem
@@ -121,7 +126,7 @@ def salvar():
         stmt = db.select(Pessoa).where(Pessoa.nome == nome_pessoa)
         ja_existe = db.session.execute(stmt).fetchone()
 
-        if ja_existe is not None:
+        if ja_existe is not None and nome != "desconhecido":
             return jsonify({'status':'400','msg': 'A pessoa informada ja existe!'}), 400
         
         
@@ -195,9 +200,8 @@ def evento_index():
         stmt = db.select(Evento, Imagem.photo_path, Pessoa.nome, Pessoa.tem_acesso).join(Evento.imagem).join(Evento.pessoa).order_by(Evento.data)
         # OBS ISSO PODE CAUSAR N+1 QUERIES
         events = db.session.execute(stmt).scalars()
-
         # Queremos entregar o Evento junto com sua Imagem correspondente
-        result = [{"id_evento": event.id_evento,"data": event.data, "descricao": event.descricao, "pessoa_id": event.pessoa_id, "imagem_id": event.imagem_id, "nome": event.pessoa.nome, "tem_acesso": event.pessoa.tem_acesso, "photo_path": normalizar_path(event.imagem.photo_path)} for event in events]
+        result = [{"id_evento": event.id_evento,"data": fix_time(event.data), "descricao": event.descricao, "pessoa_id": event.pessoa_id, "imagem_id": event.imagem_id, "nome": event.pessoa.nome, "tem_acesso": event.pessoa.tem_acesso, "photo_path": normalizar_path(event.imagem.photo_path)} for event in events]
         
         return jsonify({'status': '200', 'data': result}), 200
     except Exception as e:
@@ -273,4 +277,19 @@ def criar_diretorio():
         os.makedirs(expected_folder, exist_ok=True)
     except FileExistsError:
         print("O diretorio ja existia")
+
+def fix_time(data):
+    # Convert the string to a datetime object
+    datetime_object = data
+
+    # Assume the original datetime is in UTC (adjust the timezone accordingly if it's different)
+    utc_timezone = pytz.timezone('UTC')
+    datetime_object_utc = utc_timezone.localize(datetime_object)
+
+    # Convert to 'America/Sao_Paulo' timezone
+    saopaulo_timezone = pytz.timezone('America/Sao_Paulo')
+    datetime_object_saopaulo = datetime_object_utc.astimezone(saopaulo_timezone)
+
+    print("A NOVA DATA EH = {}".format(datetime_object_saopaulo))
+    return datetime_object_saopaulo.strftime('%d/%m/%Y às %H:%M:%S')
     

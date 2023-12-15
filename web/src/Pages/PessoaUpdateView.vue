@@ -78,13 +78,17 @@ function renderError(msg){
     </div>
     <section class="contain">
         <article  class="border-1 rounded m-1 p-1 flex justify-evenly items-center">
-            <form @submit.prevent="handle" id="inputSalvar" action="/salvar" method="POST">
-                <label for="inputNome">Nome da Pessoa: </label>
-                <input type="text" name="nome" id="inputNome">
-                <label for="inputTemAcesso">Tem Acesso ? </label>
-                <input type="checkbox" name="tem_acesso" id="inputTemAcesso" :value="temAcesso">
+            <form @submit.prevent="handle" class="d-flex flex-column gap-2" id="inputSalvar" action="/salvar" method="POST">
+                <div class="mb-3">
+                  <label for="inputNome" class="form-label">Nome da Pessoa: </label>
+                  <input type="text" class="form-control" name="nome" id="inputNome">
+                </div>
+                <div class="mb-3 form-check">
+                  <input type="checkbox" name="tem_acesso" class="form-check-input" id="inputTemAcesso" :value="temAcesso">
+                  <label class="form-check-label" for="inputTemAcesso">Tem Acesso</label>
+                </div>
                 <input type="hidden" name="csrf" value="teste" />
-                <input type="submit" value="Atualizar">
+                <input class="btn btn-info" type="submit" value="Atualizar">
                 <button class="btn btn-danger" v-on:click="deletar">Deletar Pessoa</button>
             </form>
         </article>

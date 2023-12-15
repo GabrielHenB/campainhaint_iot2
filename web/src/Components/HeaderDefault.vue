@@ -5,13 +5,13 @@ import HeaderLogo from '@/Components/HeaderLogo.vue';
 
 <template>
     <header>
-        <div class="flex justify-around items-center mb-2 pt-1 pb-2 headerbg text-slate-50">
+        <div class="d-flex align-items-center justify-content-between headerbg">
             <HeaderLogo></HeaderLogo>
-            <nav class="flex justify-between align-center">
-                <RouterLink class="ml-2" to="/campainhaint/public/">Home</RouterLink>
-                <RouterLink class="ml-2" to="camera">Camera</RouterLink>
-                <RouterLink class="ml-2" to="historico">Histórico</RouterLink>
-                <RouterLink class="ml-2" to="configuracoes">Configurações</RouterLink>
+            <nav class="d-flex gap-3 mx-2">
+                <RouterLink class="seila" :to="{name: 'index'}">Home</RouterLink>
+                <RouterLink class="seila" :to="{name: 'camera'}">Camera</RouterLink>
+                <RouterLink class="seila" :to="{name: 'eventos'}">Eventos</RouterLink>
+                <RouterLink class="seila" :to="{name: 'pessoas'}">Pessoas</RouterLink>
             </nav>
         </div>
     </header>
@@ -20,5 +20,9 @@ import HeaderLogo from '@/Components/HeaderLogo.vue';
 <style scoped>
 .headerbg{
     background-color: #3970e9;
+}
+.seila{
+    color: white;
+    text-decoration: none;
 }
 </style>

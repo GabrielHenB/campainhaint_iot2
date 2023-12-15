@@ -1,5 +1,6 @@
 <script setup>
 import axios from 'axios';
+import {URL_UPLOAD} from '@/api.js';
 import {onMounted, ref } from 'vue';
 
 // Create an Axios instance with custom options
@@ -7,22 +8,42 @@ const instanciaAxios = axios.create({
   httpsAgent: false,
 });
 
-const dados = ref([]); //REATIVO
+const coisa = ref(""); //REATIVO
 const resposta = ref("");
 const mostrarErro = ref(false);
 
-// Quando o componente for montado execute isso:
-onMounted(async () => {
-  try {
-    const response = await instanciaAxios.get('http://localhost/campainhaint/public/api/camera');
-    dados.value = response.data;
-    //console.log(dados.value);
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    resposta.value = "Erro: " + error.message;
-    mostrarErro.value = true;
-  }
-});
+function handleSubmit(ev){
+        
+            const impute = ev.target.querySelector('input[type="file"]').files[0];
+            
+            if(impute){
+                const dados = new FormData(ev.target); //Consiste nos dados do form
+                fetch(URL_UPLOAD, {
+                    method: 'POST',
+                    body: dados
+                }).then(resposta => {
+                    if(resposta.ok) console.log("Sucesso");
+                    else{
+                        console.log("Ocorreu um erro durante o envio");
+                        return resposta.json();
+                    }
+                }).then(dados => {
+                    if(dados) throw new Error("| " + dados.status + " de mensagem: " + dados.msg)
+                }).catch(err =>  {
+                    console.log("Erro Fetcher: " + err);
+                    renderError(err);
+                });
+                //ev.target.submit();
+            }
+            else
+                console.log("Formulario vazio");
+}
+
+function renderError(msg){
+  resposta.value=msg;
+  mostrarErro.value=true;
+}
+
 </script>
 
 <template>
@@ -34,12 +55,19 @@ onMounted(async () => {
     </div>
     <div class="border-1 rounded text-bg-gray">
         <p class="text-center">
-            {{ dados }}
+            <strong>Selecione uma foto para enviar ao sistema</strong>
         </p>
     </div>
-    <div class="text-left ml-2">
-        <img src="https://cdn0.iconfinder.com/data/icons/game-ui-casual-chunky/533/IconsByAndreaFryer_GameUI_Chunky_Save-512.png" width="40">
-        <a href="#">Salvar Rosto</a>
+    <div>
+      <form @submit.prevent="handleSubmit" class="text-center" id="inputMain" action="/upload" method="POST">
+        <div class="input-group mb-3">
+            <input type="file" class="form-control" name="imagem" id="inputImagem">
+            <label class="input-group-text" for="inputImagem">Upload</label>
+        </div>
+        
+        <input type="hidden" name="csrf" value="teste" />
+        <input class="btn btn-primary" type="submit" value="Enviar">
+    </form>
     </div>
 </main>
 </template>

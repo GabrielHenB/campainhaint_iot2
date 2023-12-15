@@ -53,11 +53,6 @@ const router = createRouter({
       component: () => import('./Pages/ConfigView.vue')
     },
     {
-      path: base_path + "about",
-      name: 'about',
-      component: () => import('./Pages/AboutView.vue')
-    },
-    {
       path: base_path + 'pessoas/update/:id',
       name: 'pessoas_update',
       component: () => import('./Pages/PessoaUpdateView.vue')

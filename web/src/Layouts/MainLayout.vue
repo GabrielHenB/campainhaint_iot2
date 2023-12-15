@@ -3,10 +3,10 @@ import HeaderDefault from '@/Components/HeaderDefault.vue';
 import FooterDefault from '@/Components/FooterDefault.vue';
 
 </script>
-
 <template>
     <HeaderDefault />
     <div id="content">
+        <span id="goto"></span>
         <slot />
     </div>
     <FooterDefault />

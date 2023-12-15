@@ -49,17 +49,15 @@ function redirecionar(query){
       <span v-on:click="mostrarErro = false" class="text-center text-slate-800">Fechar</span>
     </div>
     <div v-if="dados.length === 0">Nenhuma pessoa foi registrada</div>
-    <section class="contain">
-        <article v-for="(item,index) of dados"  class="border-1 rounded m-1 p-1 flex justify-evenly items-center">
-            <div class="imgwrapper bg-slate-800 ">
-                <img :src="item.img" width="140">
-            </div>
-            <div class="textcontent">
-                <h2 class="persontitle text-center text-slate-500"><strong>Nome:</strong> <span>{{ item.nome }}</span></h2>
-                <p class="datahora text-left text-slate-600"><strong>Tem Acesso:</strong> <span>{{  item.tem_acesso }}</span></p>
+    <section class="contain mt-4">
+        <article v-for="(item,index) of dados" class="">
+          <template v-if="item.nome !== 'desconhecido'">
+            <div class="text-center my-2">
+                <h2 class="text-center"><strong>Nome:</strong> <span>{{ item.nome }}</span></h2>
+                <p class="datahora"><strong>Tem Acesso:</strong> <span>{{  item.tem_acesso }}</span></p>
                 <button v-on:click="redirecionar(item.id)" class="btn btn-primary">Modificar</button>
             </div>
-            
+          </template>
         </article>
     </section>
 </main>

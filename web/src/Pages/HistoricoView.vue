@@ -11,8 +11,10 @@ const instance = axios.create({
 const dados = ref([]); //REATIVO
 const resposta = ref("");
 const mostrarErro = ref(false);
+const mostrarSucesso = ref(false);
 const descricao = ref("");
 const temAcesso = ref(false);
+const temDescricao = false;
 
 // Quando o componente for montado execute isso:
 onMounted(async () => {
@@ -72,28 +74,38 @@ function renderError(msg){
       Ocorreu um erro na requisição. <br> <span class="text-danger">{{ resposta}}</span> <br>
       <span v-on:click="mostrarErro = !mostrarErro" class="text-center text-danger">Fechar</span>
     </div>
+    <div v-if="mostrarSucesso" class="success border-2 rounded m-2 p-1">
+      <span class="text-success">Sucesso!</span> <br>
+      <span v-on:click="mostrarSucesso = !mostrarSucesso" class="text-center text-danger">Fechar</span>
+    </div>
     <div v-if="dados.length === 0">Nenhum evento foi registrado</div>
-    <section class="contain">
-        <article v-for="(item,index) of dados"  class="border-1 rounded m-1 p-1 flex justify-evenly items-center">
-            <div class="imgwrapper bg-slate-800 ">
-                <img :src="API_BASE+item.photo_path" width="140">
+    <section class="contain container-fluid">
+        <article v-for="(item,index) of dados"  class="d-flex gap-2 my-2">
+            <div class="">
+                <img :src="API_BASE+item.photo_path" width="160px" height="100%">
             </div>
-            <div class="textcontent">
-                <h2 class="persontitle text-center text-slate-500"><strong>Nome:</strong> <span>{{ item.nome }}</span></h2>
-                <p class="datahora text-left text-slate-600"><strong>Descrição:</strong> <textarea v-model="item.descricao"></textarea></p>
-                <label for="inputTemAcesso">Tem Acesso = {{ item.tem_acesso }}</label>
-                <input type="checkbox" name="tem_acesso" id="inputTemAcesso" v-model="item.tem_acesso">
-                <p class="datahora text-left text-slate-600"><strong>Horário:</strong> <span>{{  item.data }}</span></p>
-                <div class="ml-2">
-                  <img src="https://cdn0.iconfinder.com/data/icons/game-ui-casual-chunky/533/IconsByAndreaFryer_GameUI_Chunky_Save-512.png" width="40">
+            <div class="fs-5">
+                <h2 class="fs-5 display-1"><label :for="'in_'+index"><strong>Nome:</strong></label> <input type="text" class="form-control" :id="'in_'+index" v-model="item.nome"></h2>
+                <p v-if="temDescricao" class=""><strong>Descrição:</strong> <textarea v-model="item.descricao"></textarea></p>
+                <label :for="'inputTemAcesso'+index">Tem Acesso = <span class="btn btn-info">{{ item.tem_acesso }}</span></label>
+                <input type="checkbox" name="tem_acesso" class="d-none" :id="'inputTemAcesso'+index" v-model="item.tem_acesso">
+                <p class="fs-6"><strong>Horário:</strong> <span class="">{{  item.data }}</span></p>
+                
+                  <!--<img src="https://cdn0.iconfinder.com/data/icons/game-ui-casual-chunky/533/IconsByAndreaFryer_GameUI_Chunky_Save-512.png" width="40">-->
                   <button @click="handle($event, index)" class="btn btn-primary">Salvar Rosto</button>
-                </div>
+                
             </div>
             
         </article>
     </section>
+    <div class="fantasma">
+
+    </div>
 </main>
 </template>
 
 <style scoped>
+.fantasma{
+  height: 90px;
+}
 </style>
