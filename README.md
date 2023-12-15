@@ -1,6 +1,6 @@
 <p align="center">Projeto IOT 2: Campainha Inteligente</p>
 
-Alunos: Gabriel H, Arthur, Igor, Maicon.
+Alunos: Gabriel H, Igor C., Maincon G., Arthur S.
 
 ## Como buildar (Flask)
 1) Obter pacotes adicionais do pip
