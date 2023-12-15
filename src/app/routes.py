@@ -54,6 +54,7 @@ def special_store():
         criar_diretorio()
         random_filename = ''.join(random.choice('0123456789') for _ in range(6))+'.jpg'
         caminho_salvar = os.path.join(os.getcwd(), app.config['UPLOAD_FOLDER'], random_filename)
+        print(f"debug: O nome do arquivo eh {random_filename} com o caminho {caminho_salvar}")
         #resposta.save(caminho_salvar)
         f = open(caminho_salvar, 'wb') # wb for write byte data in the file instead of string
         f.write(image_raw_bytes) #write the bytes from the request body to the file
@@ -163,7 +164,7 @@ def salvar():
         id_evento_ent = int(request.form.get('id_evento'))
         nome_pessoa = escape(request.form.get('nome'))
         se_tem_acesso = (request.form.get('tem_acesso') == "True" or request.form.get('tem_acesso') == "true")
-
+        
         # Chegou aqui tem o nome e o evento mas verificar se existem
         o_evento = db.get_or_404(Evento, id_evento_ent)
         
@@ -173,14 +174,23 @@ def salvar():
         stmt = db.select(Pessoa).where(Pessoa.nome == nome_pessoa)
         ja_existe = db.session.execute(stmt).fetchone()
 
-        if ja_existe is not None and nome != "desconhecido":
-            return jsonify({'status':'400','msg': 'A pessoa informada ja existe!'}), 400
-        
-        
-        # Cria e INSERT Pessoa se ela nao existir ainda
-        a_pessoa = Pessoa(nome=nome_pessoa, tem_acesso=se_tem_acesso)
-        db.session.add(a_pessoa)
-        db.session.commit()
+        if ja_existe is not None and nome_pessoa != "desconhecido":
+            # Portanto a pessoa ja esta no bd e estamos tentando identificar
+            # Devemos atribuir entao o novo nome e identificacao a pessoa!
+            a_pessoa = db.session.execute(stmt).scalar_one()
+            a_pessoa.tem_acesso = se_tem_acesso
+            print("A pessoa ja existia e vamos associar seu id ao evento apenas!")
+            #return jsonify({'status':'400','msg': 'A pessoa informada ja existe!'}), 400
+        elif ja_existe is None and nome_pessoa != "desconhecido":
+            # A pessoa nao existe e o nome nao eh desconhecido
+
+            # Cria e INSERT Pessoa se ela nao existir ainda
+            a_pessoa = Pessoa(nome=nome_pessoa, tem_acesso=se_tem_acesso)
+            db.session.add(a_pessoa)
+            db.session.commit()
+        else:
+            # A pessoa eh desconhecida
+            a_pessoa = db.session.execute(stmt).scalar_one()
         
         # UPDATE Evento e flush no BD
         o_evento.pessoa_id = a_pessoa.id
@@ -290,16 +300,24 @@ def download_file(name):
 # Retorna o id da Pessoa se encontrar correspondencia e se nao retorna None
 def usar_facerec(alvo):
     try:
+        print("Usando o seguinte caminho {}".format(alvo))
         # Queremos rodar por todas tuplas de Imagem ate encontrar um correspondente
         as_imagens = Imagem.query.all()
         
         for imagem in as_imagens:
             if imagem.pessoa_id is not None:
                 if reconhecimento(imagem.photo_path,alvo) == True:
+                    print("Tentando reconhecer")
                     # Se isso aconteceu ele esta no banco de dados
-                    resultado = db.get_or_404(Pessoa, imagem.pessoa_id)
+                    #stmt = db.select(Pessoa).where(id == imagem.pessoa_id)
+                    #resultado = db.session.execute(stmt).scalars()[0]
+                    #resultado = db.one_or_404(Pessoa, imagem.pessoa_id)
+                    teste = imagem.pessoa_id
+                    #resultado = db.first_or_404(Pessoa, teste)
+                    resultado = Pessoa.query.filter_by(id=teste).first_or_404()
                     print(f"Encontrado: {resultado.id}")
                     return resultado.id
+        print("Nao foi possivel reconhecer retornando None")
         return None
     except Exception as somee:
         print("Erro na funcao usar_facerec = ")
