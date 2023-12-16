@@ -37,8 +37,8 @@ const int ledFlash = 4;
 //   WIFI CONSTANTES
 // ================
 
-const char* ssid = "2.4GEGV";
-const char* password = "8H2F-6h8w00**!";
+const char* ssid = "****";
+const char* password = "****";
 
 
 const String serverName = "192.168.0.35";   // Contem o endpoint para envio das fotos (deve ser o IP do local na rede)
